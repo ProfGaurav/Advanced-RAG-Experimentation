@@ -1,11 +1,11 @@
-"""Backend CLI: build the FAISS vector store ONCE for a YouTube video.
+"""Backend CLI: add a YouTube video to the shared FAISS vector store.
 
 Usage (from the rag/ folder):
     python scripts/build_index.py --video-id <VIDEO_ID> [--force]
 
 If --video-id is omitted, VIDEO_ID from `.env` is used.
 Writes the index to VECTORSTORE_DIR (default: data/vectorstore/).
-Run this before starting the Streamlit app; the UI never builds indexes.
+Optional: videos can also be added from the Streamlit sidebar. --force wipes the index first.
 """
 
 import argparse
@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     """Parse --video-id and --force (rebuild even if an index already exists)."""
     parser = argparse.ArgumentParser(description="Build the FAISS index for a YouTube video.")
     parser.add_argument("--video-id", default=get_settings().video_id, help="YouTube video ID (not the URL)")
-    parser.add_argument("--force", action="store_true", help="Rebuild even if an index already exists")
+    parser.add_argument("--force", action="store_true", help="Wipe the whole index and registry, then index this video")
     return parser.parse_args()
 
 
@@ -41,7 +41,7 @@ def main() -> None:
         sys.exit(f"Error: {exc}")
 
     if n_chunks == 0:
-        print(f"Index already exists at {index_path()} (use --force to rebuild).")
+        print(f"Video {args.video_id} is already indexed at {index_path()} (use --force to wipe and rebuild).")
     else:
         print(f"Indexed video {args.video_id}: {n_chunks} chunks saved to {index_path()}")
 

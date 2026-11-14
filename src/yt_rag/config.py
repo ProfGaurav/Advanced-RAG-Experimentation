@@ -8,7 +8,10 @@ Holds settings such as:
     - TEMPERATURE
     - CHUNK_SIZE / CHUNK_OVERLAP
     - RETRIEVER_K          (number of chunks to retrieve)
+    - FETCH_K              (candidates fetched before filtering by video_id)
     - VECTORSTORE_DIR      (where the FAISS index is persisted, default data/vectorstore)
+    - REGISTRY_PATH        (JSON list of indexed videos, default data/videos.json)
+    - CHAT_SESSIONS_PATH   (persisted chat sessions, default data/chat_sessions.json)
     - TRANSCRIPT_LANGUAGES (preferred transcript languages, e.g. ["en"])
 """
 
@@ -27,6 +30,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / ".env")
 
 
+def _project_path(value: str) -> Path:
+    """Resolve a relative path against the project root."""
+    path = Path(value)
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
 @dataclass(frozen=True)
 class Settings:
     """Typed, immutable application settings."""
@@ -38,17 +47,16 @@ class Settings:
     chunk_size: int
     chunk_overlap: int
     retriever_k: int
+    fetch_k: int
     vectorstore_dir: Path
+    registry_path: Path
+    chat_sessions_path: Path
     transcript_languages: list[str]
 
 
 @lru_cache
 def get_settings() -> Settings:
     """Return a cached `Settings` instance built from environment variables."""
-    vectorstore_dir = Path(os.getenv("VECTORSTORE_DIR", "data/vectorstore"))
-    if not vectorstore_dir.is_absolute():
-        vectorstore_dir = PROJECT_ROOT / vectorstore_dir
-
     return Settings(
         video_id=os.getenv("VIDEO_ID", ""),
         embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
@@ -57,6 +65,9 @@ def get_settings() -> Settings:
         chunk_size=int(os.getenv("CHUNK_SIZE", "1000")),
         chunk_overlap=int(os.getenv("CHUNK_OVERLAP", "200")),
         retriever_k=int(os.getenv("RETRIEVER_K", "4")),
-        vectorstore_dir=vectorstore_dir,
+        fetch_k=int(os.getenv("FETCH_K", "100")),
+        vectorstore_dir=_project_path(os.getenv("VECTORSTORE_DIR", "data/vectorstore")),
+        registry_path=_project_path(os.getenv("REGISTRY_PATH", "data/videos.json")),
+        chat_sessions_path=_project_path(os.getenv("CHAT_SESSIONS_PATH", "data/chat_sessions.json")),
         transcript_languages=os.getenv("TRANSCRIPT_LANGUAGES", "en").split(","),
     )

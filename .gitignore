@@ -4,3 +4,5 @@ __pycache__/
 .env
 data/vectorstore/*
 !data/vectorstore/.gitkeep
+data/videos.json
+data/chat_sessions.json

@@ -11,3 +11,7 @@ class TranscriptUnavailableError(YTRagError):
 
 class VectorStoreNotFoundError(YTRagError):
     """Raised when no persisted FAISS index exists."""
+
+
+class InvalidVideoURLError(YTRagError):
+    """Raised when a YouTube video ID cannot be extracted from the user's input."""

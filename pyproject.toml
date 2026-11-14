@@ -1,0 +1,12 @@
+[project]
+name = "yt-rag"
+version = "0.1.0"
+description = "Ask questions about a YouTube video using RAG (LangChain + FAISS + OpenAI + Streamlit)"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Lets Pylance / Pyright resolve `yt_rag` imports from src/
+[tool.pyright]
+extraPaths = ["src"]

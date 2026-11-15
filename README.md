@@ -9,12 +9,30 @@ video's chunks (FAISS metadata filter).
 
 ```
 ADD VIDEO (sidebar form, or scripts/build_index.py)
-  link -> video ID -> transcript -> chunks {video_id} -> OpenAI embeddings
-       -> FAISS.add_documents -> data/vectorstore/   +   data/videos.json (title, chunks)
+  link -> video ID -> timestamped snippets (cached: data/transcripts/<id>.json)
+       -> chunks {video_id, start, end} -> OpenAI embeddings (text only, times stay in metadata)
+       -> FAISS.add_documents -> data/vectorstore/ (+ manifest.json)  +  data/videos.json
 
-CHAT (selected video)
-  question -> retriever (top-k, filter video_id) -> prompt -> ChatOpenAI -> answer
+CHAT (selected video, multi-turn)
+  question + chat history (last HISTORY_TURNS exchanges of the session)
+    -> ChatOpenAI rewrites follow-up into a standalone question (skipped on the first turn)
+    -> FAISS (RERANK_CANDIDATES, filter video_id) on the standalone question
+    -> cross-encoder reranker keeps the best RETRIEVER_K (RERANKER=none to skip)
+    -> chat prompt (system + time-labelled context, history, question) -> ChatOpenAI
+    -> answer citing timestamps, e.g. (40:36)
 ```
+
+## Re-indexing
+
+`data/vectorstore/manifest.json` records the index schema version and embedding model. If
+either no longer matches (e.g. you changed `EMBEDDING_MODEL`, or pulled a schema change),
+the app refuses to load the index and asks you to run:
+
+```bash
+python scripts/build_index.py --reindex-all   # rebuilds from cached transcripts, keeps titles
+```
+
+Also run it after changing `CHUNK_SIZE` / `CHUNK_OVERLAP`.
 
 ## Layout
 
@@ -34,7 +52,7 @@ CHAT (selected video)
 | `src/yt_rag/qa.py` | `load_resources()` / `build_chain_for()` / `answer()` |
 | `src/yt_rag/ingestion/` | Link parsing, title lookup (oEmbed), transcript, chunking |
 | `src/yt_rag/vectorstore/` | Embeddings + FAISS build/append/save/load |
-| `src/yt_rag/chains/` | Retriever (video filter), prompt, LLM, LCEL QA chain |
+| `src/yt_rag/chains/` | Retriever (video filter), cross-encoder reranker, condense + QA chat prompts, LLM, history-aware LCEL chain |
 | `data/vectorstore/` | Persisted FAISS index (all videos) |
 
 ## Setup

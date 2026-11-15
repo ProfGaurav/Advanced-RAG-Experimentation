@@ -13,5 +13,9 @@ class VectorStoreNotFoundError(YTRagError):
     """Raised when no persisted FAISS index exists."""
 
 
+class IndexOutdatedError(YTRagError):
+    """Raised when the persisted index was built with another schema or embedding model."""
+
+
 class InvalidVideoURLError(YTRagError):
     """Raised when a YouTube video ID cannot be extracted from the user's input."""

@@ -9,9 +9,14 @@ Holds settings such as:
     - CHUNK_SIZE / CHUNK_OVERLAP
     - RETRIEVER_K          (number of chunks to retrieve)
     - FETCH_K              (candidates fetched before filtering by video_id)
+    - HISTORY_TURNS        (past user/assistant exchanges sent to the LLM, default 6)
+    - RERANKER             ("cross_encoder" or "none")
+    - RERANKER_MODEL       (cross-encoder model, default cross-encoder/ms-marco-MiniLM-L-6-v2)
+    - RERANK_CANDIDATES    (chunks fetched from FAISS before reranking down to RETRIEVER_K)
     - VECTORSTORE_DIR      (where the FAISS index is persisted, default data/vectorstore)
     - REGISTRY_PATH        (JSON list of indexed videos, default data/videos.json)
     - CHAT_SESSIONS_PATH   (persisted chat sessions, default data/chat_sessions.json)
+    - TRANSCRIPTS_DIR      (cached timestamped transcripts, default data/transcripts)
     - TRANSCRIPT_LANGUAGES (preferred transcript languages, e.g. ["en"])
 """
 
@@ -48,9 +53,14 @@ class Settings:
     chunk_overlap: int
     retriever_k: int
     fetch_k: int
+    history_turns: int
+    reranker: str
+    reranker_model: str
+    rerank_candidates: int
     vectorstore_dir: Path
     registry_path: Path
     chat_sessions_path: Path
+    transcripts_dir: Path
     transcript_languages: list[str]
 
 
@@ -66,8 +76,13 @@ def get_settings() -> Settings:
         chunk_overlap=int(os.getenv("CHUNK_OVERLAP", "200")),
         retriever_k=int(os.getenv("RETRIEVER_K", "4")),
         fetch_k=int(os.getenv("FETCH_K", "100")),
+        history_turns=int(os.getenv("HISTORY_TURNS", "6")),
+        reranker=os.getenv("RERANKER", "cross_encoder").strip().lower(),
+        reranker_model=os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"),
+        rerank_candidates=int(os.getenv("RERANK_CANDIDATES", "20")),
         vectorstore_dir=_project_path(os.getenv("VECTORSTORE_DIR", "data/vectorstore")),
         registry_path=_project_path(os.getenv("REGISTRY_PATH", "data/videos.json")),
         chat_sessions_path=_project_path(os.getenv("CHAT_SESSIONS_PATH", "data/chat_sessions.json")),
+        transcripts_dir=_project_path(os.getenv("TRANSCRIPTS_DIR", "data/transcripts")),
         transcript_languages=os.getenv("TRANSCRIPT_LANGUAGES", "en").split(","),
     )

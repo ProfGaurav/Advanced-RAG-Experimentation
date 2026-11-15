@@ -13,6 +13,10 @@ Holds settings such as:
     - RERANKER             ("cross_encoder" or "none")
     - RERANKER_MODEL       (cross-encoder model, default cross-encoder/ms-marco-MiniLM-L-6-v2)
     - RERANK_CANDIDATES    (chunks fetched from FAISS before reranking down to RETRIEVER_K)
+    - MIN_RERANK_SCORE     (relevance gate: refuse without calling the LLM below this, default -6;
+                            empty = off. Only applies when a reranker is configured)
+    - MAX_QUESTION_CHARS   (longer questions are rejected, default 1000)
+    - MODERATION           ("openai" = OpenAI moderation endpoint on each question, or "none")
     - VECTORSTORE_DIR      (where the FAISS index is persisted, default data/vectorstore)
     - REGISTRY_PATH        (JSON list of indexed videos, default data/videos.json)
     - CHAT_SESSIONS_PATH   (persisted chat sessions, default data/chat_sessions.json)
@@ -41,6 +45,12 @@ def _project_path(value: str) -> Path:
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
+def _optional_float(value: str) -> float | None:
+    """"" / "none" -> None, else float."""
+    value = value.strip()
+    return None if value.lower() in ("", "none") else float(value)
+
+
 @dataclass(frozen=True)
 class Settings:
     """Typed, immutable application settings."""
@@ -57,6 +67,9 @@ class Settings:
     reranker: str
     reranker_model: str
     rerank_candidates: int
+    min_rerank_score: float | None
+    max_question_chars: int
+    moderation: str
     vectorstore_dir: Path
     registry_path: Path
     chat_sessions_path: Path
@@ -80,6 +93,9 @@ def get_settings() -> Settings:
         reranker=os.getenv("RERANKER", "cross_encoder").strip().lower(),
         reranker_model=os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"),
         rerank_candidates=int(os.getenv("RERANK_CANDIDATES", "20")),
+        min_rerank_score=_optional_float(os.getenv("MIN_RERANK_SCORE", "-6")),
+        max_question_chars=int(os.getenv("MAX_QUESTION_CHARS", "1000")),
+        moderation=os.getenv("MODERATION", "openai").strip().lower(),
         vectorstore_dir=_project_path(os.getenv("VECTORSTORE_DIR", "data/vectorstore")),
         registry_path=_project_path(os.getenv("REGISTRY_PATH", "data/videos.json")),
         chat_sessions_path=_project_path(os.getenv("CHAT_SESSIONS_PATH", "data/chat_sessions.json")),

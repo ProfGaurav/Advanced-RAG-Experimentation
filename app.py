@@ -19,6 +19,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from yt_rag import chat_store, indexing, qa, registry  # noqa: E402
+from yt_rag.chains.guardrails import BLOCKING  # noqa: E402
 from yt_rag.exceptions import YTRagError  # noqa: E402
 from ui.chat import get_user_question, render_messages, show_message  # noqa: E402
 from ui.sessions_panel import render_sessions_sidebar  # noqa: E402
@@ -93,16 +94,19 @@ def render_chat(resources: qa.Resources, video: dict) -> None:
         chain = qa.build_chain_for(resources, video_id)
         with st.spinner("Thinking..."):
             try:
-                reply = qa.answer(chain, question, history)
+                reply = qa.ask(chain, question, history)
             except Exception as exc:  # surface API/network errors, but keep them out of the history
                 st.error(f"Sorry, something went wrong: {exc}")
                 return
+        if reply.guardrail in BLOCKING:  # show the refusal, but don't save it or send it as history
+            st.warning(reply.text)
+            return
 
     if session is None:  # first answered question creates the session
         st.session_state[ACTIVE_SESSION] = chat_store.create_session(video_id)
     session_id = st.session_state[ACTIVE_SESSION]
     chat_store.append_message(session_id, "user", question)
-    chat_store.append_message(session_id, "assistant", reply)
+    chat_store.append_message(session_id, "assistant", reply.text)
     st.rerun()  # refresh the title and the sessions sidebar
 
 

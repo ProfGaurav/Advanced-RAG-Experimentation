@@ -28,23 +28,22 @@ from ui.video_panel import render_add_video_form, render_video_selector  # noqa:
 CHAT_HEIGHT = 560
 
 
-@st.cache_resource(show_spinner="Loading video index...")
-def get_resources() -> dict:
-    """Load store + LLM once per server process.
+@st.cache_resource(show_spinner="Loading video index and reranker...")
+def get_resources() -> qa.Resources:
+    """Load store + LLM + reranker once per server process.
 
-    Returned as a mutable dict shared by all sessions, so a store created or
+    The returned object is shared (and mutated) by all sessions, so a store created or
     extended by an ingestion is visible everywhere without reloading from disk.
     """
-    store, llm = qa.load_resources()
-    return {"store": store, "llm": llm}
+    return qa.load_resources()
 
 
-def handle_add_video(resources: dict, url: str) -> None:
+def handle_add_video(resources: qa.Resources, url: str) -> None:
     """Ingest `url` into the shared store and select it."""
     with st.status("Adding video...", expanded=True) as status:
         try:
             st.write("Fetching transcript, embedding and saving...")
-            result = indexing.ingest_video(resources["store"], url)
+            result = indexing.ingest_video(resources.store, url)
         except YTRagError as exc:
             status.update(label="Could not add video", state="error")
             st.error(str(exc))
@@ -54,7 +53,7 @@ def handle_add_video(resources: dict, url: str) -> None:
             st.error(f"Something went wrong: {exc}")
             return
 
-        resources["store"] = result.store
+        resources.store = result.store
         select_video(result.video_id)
         if result.already_indexed:
             status.update(label=f"Already indexed: {result.title}", state="complete", expanded=False)
@@ -64,7 +63,7 @@ def handle_add_video(resources: dict, url: str) -> None:
             )
 
 
-def render_chat(resources: dict, video: dict) -> None:
+def render_chat(resources: qa.Resources, video: dict) -> None:
     """Chat for the active session (or a new one) about `video`."""
     video_id = video["video_id"]
     session = chat_store.get_session(st.session_state[ACTIVE_SESSION] or "")
@@ -88,20 +87,21 @@ def render_chat(resources: dict, video: dict) -> None:
     if not question:
         return
 
-    if session is None:  # first question creates the session
-        st.session_state[ACTIVE_SESSION] = chat_store.create_session(video_id)
-    session_id = st.session_state[ACTIVE_SESSION]
-
-    chat_store.append_message(session_id, "user", question)
+    history = session["messages"] if session else []
     with messages_box:
         show_message("user", question)
-        chain = qa.build_chain_for(resources["store"], resources["llm"], video_id)
+        chain = qa.build_chain_for(resources, video_id)
         with st.spinner("Thinking..."):
             try:
-                reply = qa.answer(chain, question)
-            except Exception as exc:  # surface API/network errors in the UI
-                reply = f"Sorry, something went wrong: {exc}"
-        show_message("assistant", reply)
+                reply = qa.answer(chain, question, history)
+            except Exception as exc:  # surface API/network errors, but keep them out of the history
+                st.error(f"Sorry, something went wrong: {exc}")
+                return
+
+    if session is None:  # first answered question creates the session
+        st.session_state[ACTIVE_SESSION] = chat_store.create_session(video_id)
+    session_id = st.session_state[ACTIVE_SESSION]
+    chat_store.append_message(session_id, "user", question)
     chat_store.append_message(session_id, "assistant", reply)
     st.rerun()  # refresh the title and the sessions sidebar
 
@@ -110,7 +110,11 @@ def main() -> None:
     """Compose the page: sessions sidebar, chat (center), videos (right)."""
     st.set_page_config(page_title="YouTube RAG", page_icon="🎬", layout="wide")
     init_state()
-    resources = get_resources()
+    try:
+        resources = get_resources()
+    except YTRagError as exc:  # e.g. index built with an old schema / other embedding model
+        st.error(str(exc))
+        st.stop()
 
     st.title("🎬 Ask the Video")
     chat_col, video_col = st.columns([3, 1], gap="large")
@@ -123,7 +127,7 @@ def main() -> None:
         video_id = render_video_selector(videos)
 
     with chat_col:
-        if video_id is None or resources["store"] is None:
+        if video_id is None or resources.store is None:
             st.info("Add a YouTube video from the panel on the right to get started.")
         else:
             video = next(v for v in videos if v["video_id"] == video_id)

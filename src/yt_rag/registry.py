@@ -41,15 +41,15 @@ def is_indexed(video_id: str) -> bool:
     return video_id in load_registry()
 
 
-def add_video(video_id: str, title: str, n_chunks: int) -> None:
-    """Register (or overwrite) a video entry."""
+def add_video(video_id: str, title: str, n_chunks: int, added_at: str | None = None) -> None:
+    """Register (or overwrite) a video entry. `added_at` defaults to now."""
     with _lock:
         registry = load_registry()
         registry[video_id] = {
             "title": title,
             "url": video_url(video_id),
             "n_chunks": n_chunks,
-            "added_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "added_at": added_at or datetime.now(timezone.utc).isoformat(timespec="seconds"),
         }
         _save(registry)
 

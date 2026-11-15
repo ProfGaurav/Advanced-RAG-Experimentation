@@ -8,6 +8,9 @@ tiktoken
 # Vector store
 faiss-cpu
 
+# Reranker (cross-encoder; pulls in torch)
+sentence-transformers
+
 # Transcript
 youtube-transcript-api
 

@@ -19,3 +19,9 @@ streamlit
 
 # Environment variables
 python-dotenv
+
+
+# Evaluation
+ragas==0.4.4
+langsmith==0.14.17
+pyyaml

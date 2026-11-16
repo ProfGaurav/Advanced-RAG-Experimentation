@@ -8,3 +8,11 @@ data/videos.json
 data/chat_sessions.json
 data/transcripts/
 docs/
+src/*.egg-info/
+
+# Evaluation
+venv-eval/
+data/eval_results/
+data/.langsmith_cache/
+evals/dataset/kg_*.json
+evals/dataset/candidates.jsonl

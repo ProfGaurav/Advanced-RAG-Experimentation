@@ -1,0 +1,9 @@
+# Evaluation environment (venv-eval). Kept separate from requirements.txt because ragas pulls
+# instructor, which pins an older jiter/openai than the app uses.
+#   python -m venv --system-site-packages venv-eval
+#   pip install -r requirements-eval.txt && pip install -e .
+-r requirements.txt
+ragas==0.4.4
+langsmith==0.14.17
+rapidfuzz          # ragas knowledge-graph entity overlap (test set generation)
+pyyaml
